@@ -29,7 +29,7 @@ export class TranscriptService {
             }
 
             return null;
-        } catch (error) {
+        } catch {
             return null;
         }
     }
@@ -38,7 +38,9 @@ export class TranscriptService {
      * Extracts the transcript from a YouTube video using youtubei.js
      */
     async extractTranscript(videoId: string): Promise<string> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let info: any;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let transcriptData: any;
 
         try {
@@ -48,15 +50,17 @@ export class TranscriptService {
             // Get video info - may throw parsing errors but still returns data
             try {
                 info = await youtube.getInfo(videoId);
-            } catch (parseError: any) {
+            } catch (parseError) {
                 // If it's a parsing error, log it but continue if we got the info object
-                if (parseError.message?.includes('Type mismatch') || parseError.message?.includes('ParsingError')) {
-                    console.warn('YouTube parsing warning (non-critical):', parseError.message);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const err = parseError as any;
+                if (err.message?.includes('Type mismatch') || err.message?.includes('ParsingError')) {
+                    console.warn('YouTube parsing warning (non-critical):', err.message);
                     // The error is thrown but info might still be populated
-                    if (!parseError.info) {
+                    if (!err.info) {
                         throw new Error('Failed to get video information');
                     }
-                    info = parseError.info;
+                    info = err.info;
                 } else {
                     throw parseError;
                 }
@@ -69,9 +73,11 @@ export class TranscriptService {
             // Get transcript
             try {
                 transcriptData = await info.getTranscript();
-            } catch (transcriptError: any) {
+            } catch (transcriptError) {
                 // Handle transcript-specific errors
-                if (transcriptError.message?.includes('Transcript is disabled')) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const err = transcriptError as any;
+                if (err.message?.includes('Transcript is disabled')) {
                     throw new Error('Transcripts are disabled for this video. Please try a video with captions enabled.');
                 }
                 throw new Error('No transcript available for this video. Please try a video with captions or subtitles.');
@@ -91,6 +97,7 @@ export class TranscriptService {
 
             // Combine all transcript segments into a single string
             const fullTranscript = segments
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 .map((segment: any) => segment.snippet?.text?.toString() || '')
                 .filter((text: string) => text.length > 0)
                 .join(' ')
@@ -102,16 +109,16 @@ export class TranscriptService {
             }
 
             return fullTranscript;
-        } catch (error) {
-            if (error instanceof Error) {
+        } catch (err) {
+            if (err instanceof Error) {
                 // Re-throw our custom error messages
-                if (error.message.includes('No transcript') ||
-                    error.message.includes('Transcript is empty') ||
-                    error.message.includes('Transcripts are disabled')) {
-                    throw error;
+                if (err.message.includes('No transcript') ||
+                    err.message.includes('Transcript is empty') ||
+                    err.message.includes('Transcripts are disabled')) {
+                    throw err;
                 }
             }
-            console.error('Transcript extraction error:', error);
+            console.error('Transcript extraction error:', err);
             throw new Error('Failed to extract transcript. The video may not have captions enabled.');
         }
     }
@@ -137,7 +144,7 @@ export class TranscriptService {
                 title: data.title || 'Unknown Title',
                 thumbnail: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`,
             };
-        } catch (error) {
+        } catch {
             // Fallback to basic info if oEmbed fails
             return {
                 videoId,
